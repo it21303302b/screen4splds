@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">EduScanner</string>
+    <string name="heading">Screen4SpLDs</string>
+    <string name="tv_select_language">Select a lanuage</string>
+    <string name="rb_bengali">Bengali</string>
+    <string name="rb_sinhala">Sinhala</string>
+    <string name="rb_tamil">Tamil</string>
+    <string name="btn_next">Next</string>
+    <string name="rb_normal">Normal</string>
+    <string name="rb_SpLD">SpLD</string>
+    <string name="btn_capture">Capture</string>
+</resources>
