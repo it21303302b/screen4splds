@@ -1,12 +1,14 @@
 package com.example.screen4splds
 
 import android.Manifest
+import android.app.AlertDialog
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
 import android.widget.Button
+import android.widget.RadioButton
 import android.widget.RadioGroup
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
@@ -40,7 +42,11 @@ class MainActivity : AppCompatActivity() {
 
     private val capturePhoto = registerForActivityResult(ActivityResultContracts.TakePicture()) { isSuccess ->
         if (isSuccess) {
-            cropImage(photoUri)
+            if (::photoUri.isInitialized) {
+                cropImage(photoUri)
+            } else {
+                Toast.makeText(this, "Photo URI not initialized", Toast.LENGTH_SHORT).show()
+            }
         } else {
             Toast.makeText(this, "Failed to capture photo", Toast.LENGTH_SHORT).show()
         }
@@ -56,14 +62,13 @@ class MainActivity : AppCompatActivity() {
         if (result.resultCode == RESULT_OK) {
             val resultUri = UCrop.getOutput(result.data!!)
             resultUri?.let {
-                saveCroppedImage(it)
+                showCategorySelectionDialog(it)
             }
         } else if (result.resultCode == UCrop.RESULT_ERROR) {
             val cropError = UCrop.getError(result.data!!)
             Toast.makeText(this, "Crop error: ${cropError?.message}", Toast.LENGTH_SHORT).show()
         }
     }
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -91,7 +96,11 @@ class MainActivity : AppCompatActivity() {
 
         cameraResultLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == RESULT_OK) {
-                cropImage(photoUri)
+                if (::photoUri.isInitialized) {
+                    cropImage(photoUri)
+                } else {
+                    Toast.makeText(this, "Photo URI not initialized", Toast.LENGTH_SHORT).show()
+                }
             } else {
                 Toast.makeText(this, "Failed to capture photo", Toast.LENGTH_SHORT).show()
             }
@@ -102,7 +111,6 @@ class MainActivity : AppCompatActivity() {
         val timeStamp: String = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
         val imageFileName = "JPEG_${timeStamp}_"
 
-        // Ensure this matches the path configuration in file_paths.xml
         val storageDir: File? = getExternalFilesDir(Environment.DIRECTORY_PICTURES)
         val imageFile: File = File.createTempFile(imageFileName, ".jpg", storageDir)
 
@@ -123,12 +131,32 @@ class MainActivity : AppCompatActivity() {
         val uCrop = UCrop.of(sourceUri, destinationUri)
             .withAspectRatio(1f, 1f)
             .withMaxResultSize(1000, 1000)
-        uCrop.start(this)
+        uCropResult.launch(uCrop.getIntent(this))
     }
 
-    private fun saveCroppedImage(uri: Uri) {
+    private fun showCategorySelectionDialog(uri: Uri) {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_category_selection, null)
+        val radioGroup = dialogView.findViewById<RadioGroup>(R.id.radioGroupCategory)
+
+        AlertDialog.Builder(this)
+            .setTitle("Select Category")
+            .setView(dialogView)
+            .setPositiveButton("OK") { _, _ ->
+                val selectedId = radioGroup.checkedRadioButtonId
+                val category = when (selectedId) {
+                    R.id.radioButtonNormal -> "N"
+                    R.id.radioButtonSpLD -> "S"
+                    else -> "N"
+                }
+                saveCroppedImage(uri, category)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun saveCroppedImage(uri: Uri, category: String) {
         val timeStamp = SimpleDateFormat("yyyyMMddHHmmssSSS", Locale.US).format(Date())
-        val fileName = "${selectedLanguage}_${timeStamp}_N.jpg"
+        val fileName = "${selectedLanguage}_${timeStamp}_$category.jpg"
         val storageDir: File? = getExternalFilesDir(null)
         val file = File(storageDir, fileName)
         contentResolver.openInputStream(uri)?.use { inputStream ->
@@ -140,5 +168,4 @@ class MainActivity : AppCompatActivity() {
         val savedLocation = file.absolutePath
         Toast.makeText(this, "Image saved as $fileName\nLocation: $savedLocation\nSuccess!", Toast.LENGTH_LONG).show()
     }
-
 }
